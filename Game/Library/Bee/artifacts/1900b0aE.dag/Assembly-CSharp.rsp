@@ -358,6 +358,7 @@
 "Assets/MouseLook.cs"
 "Assets/MoveCamera.cs"
 "Assets/PlayerMovement.cs"
+"Assets/Sliding.cs"
 "Assets/WallRunning.cs"
 -langversion:9.0
 

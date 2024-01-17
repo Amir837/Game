@@ -9,6 +9,10 @@ public class PlayerMovement : MonoBehaviour
     public float walkSpeed;
     public float sprintSpeed;
     public float wallrunSpeed;
+    public float slideSpeed;
+
+    private float desiredMoveSpeed;
+    private float lastDesiredMoveSpeed;
 
     public float groundDrag;
 
@@ -59,8 +63,11 @@ public class PlayerMovement : MonoBehaviour
         sprinting,
         wallrunning,
         crouching,
+        sliding,
         air
     }
+
+    public bool sliding;
 
     public bool wallrunning;
 
@@ -130,25 +137,71 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
-        if (Input.GetKey(crouchKey))                    // Mode - Crouching
+        if (sliding)                                    // Mode - Sliding
+        {
+            state = MovementState.sliding;
+
+            if (OnSlope() && rb.velocity.y < 0.1f)
+            {
+                desiredMoveSpeed = slideSpeed;
+            }
+            else
+            {
+                desiredMoveSpeed = sprintSpeed;
+            }
+        }
+        else if (Input.GetKey(crouchKey))               // Mode - Crouching
         {
             state = MovementState.crouching;
-            moveSpeed = crouchSpeed;
+            desiredMoveSpeed = crouchSpeed;
         }
         else if (grounded && Input.GetKey(sprintKey))   // Mode - Sprinting
         {
             state = MovementState.sprinting;
-            moveSpeed = sprintSpeed;
+            desiredMoveSpeed = sprintSpeed;
         }
         else if (grounded)                              // Mode - Walking
         {
             state = MovementState.walking;
-            moveSpeed = walkSpeed;
+            desiredMoveSpeed = walkSpeed;
         }
         else                                            // Mode - Air
         {
             state = MovementState.air;
         }
+
+        // check if desiredMoveSpeed has changed drastically 
+        if (Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > 4f && moveSpeed != 0)
+        {
+            StopAllCoroutines();
+            StartCoroutine(SmoothlyLerpMoveSpeed());
+        }
+        else
+        {
+            moveSpeed = desiredMoveSpeed;
+        }
+
+        Debug.Log(desiredMoveSpeed - lastDesiredMoveSpeed);
+        lastDesiredMoveSpeed = desiredMoveSpeed;
+        Debug.Log(moveSpeed);
+        Debug.Log(rb.velocity.magnitude);
+    }
+
+    private IEnumerator SmoothlyLerpMoveSpeed()
+    {
+        // smoothly lerp movementSpeed to desired value
+        float time = 0;
+        float difference = Mathf.Abs(desiredMoveSpeed - moveSpeed);
+        float startValue = moveSpeed;
+
+        while (time < difference)
+        {
+            moveSpeed = Mathf.Lerp(startValue, desiredMoveSpeed, time / difference);
+            time += Time.deltaTime;
+            yield return null;
+        }
+
+        moveSpeed = desiredMoveSpeed;
     }
 
     private void MovePlayer()
@@ -157,7 +210,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (OnSlope())
         {
-            rb.AddForce(GetSlopeMoveDirection() * moveSpeed * 10f, ForceMode.Force);
+            rb.AddForce(GetSlopeMoveDirection(moveDirection) * moveSpeed * 10f, ForceMode.Force);
         }
         
         if (grounded)
@@ -195,9 +248,9 @@ public class PlayerMovement : MonoBehaviour
         readyToJump = true;
     }
 
-    private bool OnSlope()
+    public bool OnSlope()
     {
-        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.3f)) 
+        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.08f)) 
         {
             float angle = Vector3.Angle(Vector3.up, slopeHit.normal);
             return ((angle < maxSlopedAngle) && (angle != 0f));
@@ -206,9 +259,8 @@ public class PlayerMovement : MonoBehaviour
         return false;
     }
 
-    private Vector3 GetSlopeMoveDirection()
+    public Vector3 GetSlopeMoveDirection(Vector3 direction)
     {
-        var vector = Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
-        return vector;
+        return Vector3.ProjectOnPlane(direction, slopeHit.normal).normalized;
     }
 }
