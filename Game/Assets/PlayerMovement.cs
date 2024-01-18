@@ -8,8 +8,8 @@ public class PlayerMovement : MonoBehaviour
     private float moveSpeed;
     public float walkSpeed;
     public float sprintSpeed;
-    public float wallrunSpeed;
     public float slideSpeed;
+    public float wallrunSpeed;
 
     private float desiredMoveSpeed;
     private float lastDesiredMoveSpeed;
@@ -40,7 +40,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Ground Check")]
     public float playerHeight;
     public LayerMask whatIsGround;
-    bool grounded;
+    public bool grounded;
 
     [Header("Slope Handling")]      // Slope logic doesn't work ideally* 
     public float maxSlopedAngle;
@@ -68,7 +68,7 @@ public class PlayerMovement : MonoBehaviour
     }
 
     public bool sliding;
-
+    public bool crouching; // Will be using this. 
     public bool wallrunning;
 
     private void Start()
@@ -122,7 +122,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // start crouch
-        if (Input.GetKeyDown(crouchKey))
+        if (Input.GetKeyDown(crouchKey) && grounded)
         {
             transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
             rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
@@ -137,7 +137,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
-        if (sliding)                                    // Mode - Sliding
+        if (wallrunning)
+        {
+            state = MovementState.wallrunning;
+            desiredMoveSpeed = wallrunSpeed;
+        }
+        else if (sliding)                                    // Mode - Sliding
         {
             state = MovementState.sliding;
 
@@ -150,7 +155,7 @@ public class PlayerMovement : MonoBehaviour
                 desiredMoveSpeed = sprintSpeed;
             }
         }
-        else if (Input.GetKey(crouchKey))               // Mode - Crouching
+        else if (Input.GetKey(crouchKey) && grounded)               // Mode - Crouching
         {
             state = MovementState.crouching;
             desiredMoveSpeed = crouchSpeed;
@@ -181,10 +186,10 @@ public class PlayerMovement : MonoBehaviour
             moveSpeed = desiredMoveSpeed;
         }
 
-        Debug.Log(desiredMoveSpeed - lastDesiredMoveSpeed);
+        // Debug.Log(desiredMoveSpeed - lastDesiredMoveSpeed);
         lastDesiredMoveSpeed = desiredMoveSpeed;
-        Debug.Log(moveSpeed);
-        Debug.Log(rb.velocity.magnitude);
+        // Debug.Log(moveSpeed);
+        // Debug.Log(rb.velocity.magnitude);
     }
 
     private IEnumerator SmoothlyLerpMoveSpeed()
